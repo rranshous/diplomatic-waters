@@ -125,7 +125,7 @@ app.post('/api/model', async (req: express.Request<{}, any, Omit<RequestBody, 'a
     
     // Prepare the payload for Claude
     const payload = {
-      model: "claude-3-sonnet-20240229", // Corrected model name
+      model: "claude-3-7-sonnet-20250219", // Corrected model name based on error
       system: systemPrompt,
       messages: [
         { 
