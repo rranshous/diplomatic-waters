@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diplomatic Waters: Treaty Simulator</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--dark);
+            background-color: var(--light);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        main {
+            display: flex;
+            flex: 1;
+            padding: 1rem;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            gap: 1rem;
+        }
+        
+        .intro-screen, .treaty-editor-screen, .correspondence-screen, .news-screen {
+            display: none;
+        }
+        
+        .active-screen {
+            display: block;
+        }
+        
+        .treaty-editor {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .treaty-textarea {
+            width: 100%;
+            min-height: 300px;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: vertical;
+        }
+        
+        .news-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 1rem;
+        }
+        
+        .news-item {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--secondary);
+        }
+        
+        .news-item.negative {
+            border-left-color: var(--accent);
+        }
+        
+        .correspondence {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .message {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            max-width: 80%;
+        }
+        
+        .message.from-nation {
+            align-self: flex-start;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .message.from-player {
+            align-self: flex-end;
+            border-right: 4px solid var(--secondary);
+            background-color: #f8f9fa;
+        }
+        
+        .nation-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .nation-card {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .nation-card h3 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        
+        .btn {
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background-color: #1e2b38;
+        }
+        
+        .btn-danger {
+            background-color: var(--accent);
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .api-key-container {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .api-key-input {
+            width: 100%;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 1rem;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        footer {
+            background-color: var(--primary);
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Diplomatic Waters: Treaty Simulator</h1>
+    </header>
+    
+    <main>
+        <div class="game-container">
+            <!-- API Key Input -->
+            <div class="api-key-container">
+                <h2>Enter your Anthropic API Key</h2>
+                <p>This game uses Claude AI to simulate treaty negotiations. Your API key is stored locally in your browser.</p>
+                <input type="password" id="api-key-input" class="api-key-input" placeholder="sk-ant-api03-...">
+                <button id="save-api-key" class="btn">Save API Key</button>
+            </div>
+            
+            <!-- Intro Screen -->
+            <div id="intro-screen" class="intro-screen">
+                <h2>The Nerin River Crisis</h2>
+                <p>Three nations share the Nerin River basin during an unprecedented drought:</p>
+                
+                <div class="nation-info">
+                    <div class="nation-card">
+                        <h3>Tuvana (Upstream)</h3>
+                        <p>A rapidly industrializing nation that recently completed a major hydroelectric dam.</p>
+                        <p><strong>Primary Interest:</strong> Maintain control of dam operations and hydroelectric production.</p>
+                    </div>
+                    
+                    <div class="nation-card">
+                        <h3>Alaria (Midstream)</h3>
+                        <p>Agricultural economy heavily dependent on river irrigation for crop production.</p>
+                        <p><strong>Primary Interest:</strong> Secure reliable water flow for irrigation systems.</p>
+                    </div>
+                    
+                    <div class="nation-card">
+                        <h3>Meridian (Downstream)</h3>
+                        <p>Mix of urban centers and farming communities reliant on river for drinking water and agriculture.</p>
+                        <p><strong>Primary Interest:</strong> Ensure water quality and quantity for urban and agricultural needs.</p>
+                    </div>
+                </div>
+                
+                <p>As drought conditions worsen, tensions rise between these nations. Your task is to draft treaties that balance competing water needs and prevent humanitarian disaster.</p>
+                
+                <button id="start-treaty" class="btn btn-primary">Begin Treaty Drafting</button>
+            </div>
+            
+            <!-- Treaty Editor Screen -->
+            <div id="treaty-editor-screen" class="treaty-editor-screen">
+                <h2>Draft Treaty: Water Allocation Agreement</h2>
+                
+                <div class="treaty-editor">
+                    <p>Write the terms of the agreement between Tuvana, Alaria, and Meridian regarding water allocation during the drought crisis.</p>
+                    
+                    <textarea id="treaty-text" class="treaty-textarea">WATER ALLOCATION AGREEMENT
+
+BETWEEN the Government of Tuvana, the Government of Alaria, and the Government of Meridian,
+
+WHEREAS the Nerin River Basin is experiencing severe drought conditions;
+
+WHEREAS all parties recognize the need for cooperation in water management;
+
+The Parties hereby agree as follows:
+
+ARTICLE 1: DEFINITIONS
+
+ARTICLE 2: WATER ALLOCATION
+
+ARTICLE 3: DAM OPERATION PROTOCOLS
+
+ARTICLE 4: MONITORING AND ENFORCEMENT
+
+ARTICLE 5: DISPUTE RESOLUTION
+
+</textarea>
+                    
+                    <div>
+                        <button id="submit-treaty" class="btn btn-primary">Submit Treaty</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Correspondence Screen -->
+            <div id="correspondence-screen" class="correspondence-screen">
+                <h2>Nation Responses</h2>
+                
+                <div id="correspondence-container" class="correspondence">
+                    <!-- Messages will be added here dynamically -->
+                </div>
+                
+                <div>
+                    <textarea id="response-text" placeholder="Write your response..." class="treaty-textarea" style="min-height: 150px;"></textarea>
+                    <button id="send-response" class="btn btn-primary">Send Response</button>
+                    <button id="proceed-to-simulation" class="btn">Proceed to Simulation</button>
+                </div>
+            </div>
+            
+            <!-- News Screen -->
+            <div id="news-screen" class="news-screen">
+                <h2>Treaty Implementation</h2>
+                
+                <div id="news-feed" class="news-feed">
+                    <!-- News items will be added here dynamically -->
+                </div>
+                
+                <div>
+                    <button id="revise-treaty" class="btn btn-primary">Revise Treaty</button>
+                </div>
+            </div>
+            
+            <!-- Loading Indicator -->
+            <div id="loading" class="loading">
+                <p>Processing...</p>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>Diplomatic Waters: A Treaty Writing Simulator</p>
+    </footer>
+    
+    <script>
+        // Game State
+        const gameState = {
+            apiKey: localStorage.getItem('anthropicApiKey') || '',
+            currentScreen: 'intro',
+            treaty: '',
+            correspondence: [],
+            newsItems: [],
+            nationPositions: {
+                tuvana: {
+                    name: 'Tuvana',
+                    position: 'Upstream',
+                    interests: ['Maintain dam operation control', 'Maximize hydroelectric production', 'Industrial development']
+                },
+                alaria: {
+                    name: 'Alaria',
+                    position: 'Midstream',
+                    interests: ['Secure water for irrigation', 'Protect agricultural output', 'Compensation for losses']
+                },
+                meridian: {
+                    name: 'Meridian',
+                    position: 'Downstream',
+                    interests: ['Guaranteed minimum water flow', 'Water quality standards', 'Flood prevention measures']
+                }
+            }
+        };
+        
+        // DOM Elements
+        const introScreen = document.getElementById('intro-screen');
+        const treatyEditorScreen = document.getElementById('treaty-editor-screen');
+        const correspondenceScreen = document.getElementById('correspondence-screen');
+        const newsScreen = document.getElementById('news-screen');
+        const loading = document.getElementById('loading');
+        
+        const apiKeyInput = document.getElementById('api-key-input');
+        const saveApiKeyButton = document.getElementById('save-api-key');
+        const startTreatyButton = document.getElementById('start-treaty');
+        const submitTreatyButton = document.getElementById('submit-treaty');
+        const treatyTextarea = document.getElementById('treaty-text');
+        const correspondenceContainer = document.getElementById('correspondence-container');
+        const responseText = document.getElementById('response-text');
+        const sendResponseButton = document.getElementById('send-response');
+        const proceedToSimulationButton = document.getElementById('proceed-to-simulation');
+        const newsFeed = document.getElementById('news-feed');
+        const reviseTreatyButton = document.getElementById('revise-treaty');
+        
+        // Initialize
+        function init() {
+            updateScreen(gameState.currentScreen);
+            
+            // Restore API key if present
+            if (gameState.apiKey) {
+                apiKeyInput.value = gameState.apiKey;
+                showScreen('intro');
+            }
+            
+            // Set up event listeners
+            saveApiKeyButton.addEventListener('click', saveApiKey);
+            startTreatyButton.addEventListener('click', () => showScreen('treaty-editor'));
+            submitTreatyButton.addEventListener('click', submitTreaty);
+            sendResponseButton.addEventListener('click', sendResponse);
+            proceedToSimulationButton.addEventListener('click', proceedToSimulation);
+            reviseTreatyButton.addEventListener('click', () => showScreen('treaty-editor'));
+        }
+        
+        // Save API Key
+        function saveApiKey() {
+            const apiKey = apiKeyInput.value.trim();
+            if (apiKey) {
+                gameState.apiKey = apiKey;
+                localStorage.setItem('anthropicApiKey', apiKey);
+                showScreen('intro');
+            } else {
+                alert('Please enter a valid API key');
+            }
+        }
+        
+        // Show specific screen
+        function showScreen(screenName) {
+            gameState.currentScreen = screenName;
+            updateScreen(screenName);
+        }
+        
+        // Update screen visibility
+        function updateScreen(screenName) {
+            introScreen.classList.toggle('active-screen', screenName === 'intro');
+            treatyEditorScreen.classList.toggle('active-screen', screenName === 'treaty-editor');
+            correspondenceScreen.classList.toggle('active-screen', screenName === 'correspondence');
+            newsScreen.classList.toggle('active-screen', screenName === 'news');
+        }
+        
+        // Submit Treaty
+        async function submitTreaty() {
+            const treatyText = treatyTextarea.value;
+            if (!treatyText) {
+                alert('Please draft a treaty');
+                return;
+            }
+            
+            gameState.treaty = treatyText;
+            showLoading(true);
+            
+            try {
+                // Get nation responses from Claude
+                const responses = await callClaudeAPI('nationResponse', { treaty: treatyText });
+                gameState.correspondence = responses;
+                
+                // Display responses
+                displayCorrespondence(responses);
+                showLoading(false);
+                showScreen('correspondence');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error processing your treaty. Please try again.');
+                showLoading(false);
+            }
+        }
+        
+        // Send Response to Nations
+        function sendResponse() {
+            const response = responseText.value;
+            if (!response) {
+                alert('Please write a response');
+                return;
+            }
+            
+            // Add player response to correspondence
+            gameState.correspondence.push({
+                from: 'player',
+                message: response
+            });
+            
+            // Display the updated correspondence
+            displayCorrespondence(gameState.correspondence);
+            
+            // Clear the response textarea
+            responseText.value = '';
+        }
+        
+        // Proceed to Simulation
+        async function proceedToSimulation() {
+            showLoading(true);
+            
+            try {
+                // Get simulation news from Claude
+                const newsUpdates = await callClaudeAPI('generateNews', { 
+                    treaty: gameState.treaty,
+                    correspondence: gameState.correspondence
+                });
+                
+                gameState.newsItems = newsUpdates;
+                
+                // Display news
+                displayNews(newsUpdates);
+                showLoading(false);
+                showScreen('news');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error generating simulation. Please try again.');
+                showLoading(false);
+            }
+        }
+        
+        // Display Correspondence
+        function displayCorrespondence(correspondence) {
+            correspondenceContainer.innerHTML = '';
+            
+            correspondence.forEach(item => {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                
+                if (item.from === 'player') {
+                    messageDiv.classList.add('from-player');
+                    messageDiv.innerHTML = `
+                        <p><strong>Your response:</strong></p>
+                        <p>${item.message}</p>
+                    `;
+                } else {
+                    messageDiv.classList.add('from-nation');
+                    messageDiv.innerHTML = `
+                        <p><strong>From ${item.from}:</strong></p>
+                        <p>${item.message}</p>
+                    `;
+                }
+                
+                correspondenceContainer.appendChild(messageDiv);
+            });
+        }
+        
+        // Display News
+        function displayNews(newsItems) {
+            newsFeed.innerHTML = '';
+            
+            newsItems.forEach(item => {
+                const newsDiv = document.createElement('div');
+                newsDiv.classList.add('news-item');
+                if (item.sentiment === 'negative') {
+                    newsDiv.classList.add('negative');
+                }
+                
+                newsDiv.innerHTML = `
+                    <p><strong>Day ${item.day}: ${item.headline}</strong></p>
+                    <p>${item.content}</p>
+                    <p><em>Source: ${item.source}</em></p>
+                `;
+                
+                newsFeed.appendChild(newsDiv);
+            });
+        }
+        
+        // Call Claude API through our backend
+        async function callClaudeAPI(requestType, data) {
+            try {
+                const response = await fetch('/api/model', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        gameState: gameState,
+                        action: data,
+                        requestType: requestType,
+                        apiKey: gameState.apiKey
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+                }
+                
+                const responseData = await response.json();
+                
+                // Check if the result is already parsed JSON or needs parsing
+                if (typeof responseData.result === 'string') {
+                    try {
+                        // Try to find and parse JSON in the string
+                        const jsonMatch = responseData.result.match(/```json\n([\s\S]*?)\n```/) || 
+                                         responseData.result.match(/\[([\s\S]*?)\]/) || 
+                                         responseData.result.match(/\{([\s\S]*?)\}/);
+                        
+                        if (jsonMatch) {
+                            return JSON.parse(jsonMatch[0]);
+                        } else {
+                            // Fallback: try to parse full response as JSON
+                            return JSON.parse(responseData.result);
+                        }
+                    } catch (e) {
+                        console.error("Error parsing JSON from response:", e);
+                        
+                        // Fallback responses based on request type
+                        if (requestType === 'nationResponse') {
+                            return [
+                                {
+                                    from: 'Tuvana',
+                                    message: 'We received your treaty but our system encountered an error processing the response. Please try again or contact technical support.'
+                                },
+                                {
+                                    from: 'Alaria',
+                                    message: 'We are experiencing technical difficulties with our diplomatic communication system. Please stand by.'
+                                },
+                                {
+                                    from: 'Meridian',
+                                    message: 'Our response system is currently unavailable. We will address your treaty proposal as soon as systems are restored.'
+                                }
+                            ];
+                        } else if (requestType === 'generateNews') {
+                            return [
+                                {
+                                    day: 1,
+                                    headline: 'Technical Difficulties Delay Treaty Implementation',
+                                    content: 'Due to technical issues, the simulation of treaty implementation has been delayed. Please try again or contact technical support.',
+                                    source: 'System Administrator',
+                                    sentiment: 'negative'
+                                }
+                            ];
+                        }
+                        
+                        return [];
+                    }
+                }
+                
+                return responseData.result;
+            } catch (error) {
+                console.error('Error calling API:', error);
+                alert('Error connecting to the server. Please check your connection and try again.');
+                throw error;
+            }
+        }
+        
+        // Show/hide loading indicator
+        function showLoading(show) {
+            loading.classList.toggle('active', show);
+        }
+        
+        // Initialize the game
+        init();
+    </script>
+</body>
+</html>
