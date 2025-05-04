@@ -22,7 +22,6 @@ interface RequestBody {
   gameState: any;
   action: any;
   requestType: RequestType;
-  apiKey?: string;
 }
 
 // Helper functions
@@ -108,12 +107,17 @@ Show how the treaty's language directly influences events. Include both positive
 }
 
 // API endpoint
-app.post('/api/model', async (req: express.Request, res: express.Response) => {
+// Explicitly type the async handler to match express expectations
+app.post('/api/model', async (req: express.Request<{}, any, Omit<RequestBody, 'apiKey'>, {}>, res: express.Response): Promise<void> => {
   try {
-    const { gameState, action, requestType, apiKey }: RequestBody = req.body;
+    const { gameState, action, requestType } = req.body;
     
-    if (!apiKey && !process.env.ANTHROPIC_API_KEY) {
-      return res.status(400).json({ error: 'API key is required' });
+    // Rely solely on the environment variable for the API key
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      console.error('Anthropic API key is not configured on the server.');
+      res.status(500).json({ error: 'API key configuration error' }); // Use 500 for server config issues
+      return; // Ensure function exits
     }
     
     // Create appropriate system prompt based on request type
@@ -121,7 +125,7 @@ app.post('/api/model', async (req: express.Request, res: express.Response) => {
     
     // Prepare the payload for Claude
     const payload = {
-      model: "claude-3-7-sonnet-20250219", // Using the latest model
+      model: "claude-3-sonnet-20240229", // Corrected model name
       system: systemPrompt,
       messages: [
         { 
@@ -149,7 +153,7 @@ app.post('/api/model', async (req: express.Request, res: express.Response) => {
       {
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey || process.env.ANTHROPIC_API_KEY,
+          'x-api-key': apiKey, // Use the server-side key
           'anthropic-version': '2023-06-01'
         }
       }
@@ -197,12 +201,21 @@ app.post('/api/model', async (req: express.Request, res: express.Response) => {
     res.json({ result: content });
   } catch (error) {
     console.error('Error calling Claude API:', error);
-    res.status(500).json({ error: 'Error processing request' });
+    // Check if the error is an Axios error to provide more details
+    if (axios.isAxiosError(error)) {
+        console.error('Axios error details:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Error communicating with AI service', 
+            details: error.response?.data?.error?.message || error.message 
+        });
+    } else {
+        res.status(500).json({ error: 'Internal server error processing request' });
+    }
   }
 });
 
 // Serve the main HTML file
-app.get('/', (req: express.Request, res: express.Response) => {
+app.get('/', (req: express.Request, res: express.Response): void => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 

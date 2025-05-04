@@ -43,46 +43,51 @@ Diplomatic Waters uses a minimalist approach that leverages AI for most game log
 
 ## Setup Instructions
 
-1. **Clone the repository**
+1.  **Clone the repository**
 
-```bash
-git clone https://github.com/yourusername/diplomatic-waters.git
-cd diplomatic-waters
-```
+    ```bash
+    git clone https://github.com/yourusername/diplomatic-waters.git
+    cd diplomatic-waters
+    ```
 
-2. **Install dependencies**
+2.  **Install dependencies**
 
-```bash
-npm install
-```
+    ```bash
+    npm install
+    ```
 
-3. **Set up environment variables**
+3.  **Set up environment variables**
 
-Create a `.env` file in the project root:
+    Create a `.env` file in the project root directory (`/workspaces/diplomatic-waters/`) and add your Anthropic API key:
 
-```
-ANTHROPIC_API_KEY=your_api_key_here
-PORT=3000
-```
+    ```dotenv
+    ANTHROPIC_API_KEY=your_actual_anthropic_api_key_here
+    # You can optionally set a port, otherwise it defaults to 3000
+    # PORT=3001 
+    ```
+    Replace `your_actual_anthropic_api_key_here` with your real key.
 
-4. **Build the TypeScript server**
+4.  **Compile the TypeScript server**
 
-```bash
-npm run build
-```
+    ```bash
+    npm run build 
+    ```
+    *(This assumes you have a `build` script in your `package.json` that runs `tsc`)*
 
-5. **Start the server**
+5.  **Start the server**
 
-```bash
-npm start
-```
+    ```bash
+    npm start
+    ```
+    *(This assumes you have a `start` script in your `package.json` that runs the compiled JavaScript, e.g., `node dist/server.js`)*
 
-6. **Access the game**
+6.  **Access the game**
 
-Open your browser and navigate to:
-```
-http://localhost:3000
-```
+    Open your browser and navigate to:
+    ```
+    http://localhost:3000 
+    ```
+    (Or the port you specified in the `.env` file).
 
 ## Game Flow
 
@@ -92,12 +97,6 @@ http://localhost:3000
 4. **Correspondence**: Exchange messages to clarify positions
 5. **Simulation**: Watch news updates showing treaty implementation
 6. **Revision**: Address issues by revising treaty language
-
-## Using Your Own API Key
-
-Players can either:
-- Use the server's Anthropic API key (set in `.env`)
-- Input their own API key in the game interface
 
 ## Project Architecture
 
